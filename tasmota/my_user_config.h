@@ -542,6 +542,11 @@
 //#define USE_MAGIC_SWITCH                         // Add Sonoff MagicSwitch support as implemented in Sonoff Basic R4 (+612B flash, +64B IRAM for intr)
 //  #define MAGICSWITCH_MIN_PULSE  4000            // Overridable minimum pulse, also overridable by command MagicSwitchPulse (not saved to flash)
 //  #define MAGICSWITCH_MASKING_WINDOW_LEN  5      // Overridable masking window (in number of 50ms loops)
+#define USE_MICRONOVA                            // Use micronova protocol on software serial
+#ifdef USE_MICRONOVA
+  #define MICONOVA_TX 12
+  #define MICRONOVA_RX 14
+#endif
 
 // -- Optional light modules ----------------------
 #define USE_LIGHT                                // Add support for light control
