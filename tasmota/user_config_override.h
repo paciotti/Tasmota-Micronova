@@ -34,7 +34,7 @@
  *   - All parameters can be persistent changed online using commands via MQTT, WebConsole or Serial.
 \*****************************************************************************************************/
 
-/*
+
 Examples :
 
 // -- Master parameter control --------------------
@@ -83,12 +83,5 @@ Examples :
 #undef  WIFI_DNS2
 #define WIFI_DNS2           MY_DNS2              // If not using DHCP set DNS IP address (might be equal to WIFI_GATEWAY)
 #endif
-
-// !!! Remember that your changes GOES AT THE BOTTOM OF THIS FILE right before the last #endif !!!
-*/
-
-
-
-
 
 #endif  // _USER_CONFIG_OVERRIDE_H_
