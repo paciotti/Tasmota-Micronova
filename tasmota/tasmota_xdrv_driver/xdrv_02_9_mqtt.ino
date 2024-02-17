@@ -677,11 +677,13 @@ void MqttPublishPayload(const char* topic, const char* payload, uint32_t binary_
 #ifdef USE_TASMESH
     log_data_topic = (MESHroleNode()) ? F("MSH: ") : F(D_LOG_MQTT);  // MSH: or MQT:
 #else
-    log_data_topic = F(D_LOG_MQTT);                      // MQT:
+    // Commented for micronova debug
+  log_data_topic = F(D_LOG_MQTT);                      // MQT:
 #endif  // USE_TASMESH
     log_data_topic += topic;                             // stat/tasmota/STATUS2
   } else {
-    log_data_topic = F(D_LOG_RESULT);                    // RSL:
+    // Commented for micronova debug
+  log_data_topic = F(D_LOG_RESULT);                    // RSL:
     char *command = strrchr(topic, '/');                 // If last part of topic it is always the command
     log_data_topic += (command == nullptr) ? topic : command +1;  // STATUS2
     retained = false;                                    // Without MQTT enabled there is no retained message
@@ -696,9 +698,11 @@ void MqttPublishPayload(const char* topic, const char* payload, uint32_t binary_
   char* log_data_retained = nullptr;
   String log_data_retained_b;
   if (retained) {
-    log_data_retained_b = F(" (" D_RETAINED ")");        // (retained)
+    // Commented for micronova debug
+  log_data_retained_b = F(" (" D_RETAINED ")");        // (retained)
     log_data_retained = (char*)log_data_retained_b.c_str();
   }
+  // Commented for micronova debug
   AddLogData(LOG_LEVEL_INFO, log_data_topic.c_str(), log_data_payload, log_data_retained);  // MQT: stat/tasmota/STATUS2 = {"StatusFWR":{"Version":...
 
   if (Settings->ledstate &0x04) {

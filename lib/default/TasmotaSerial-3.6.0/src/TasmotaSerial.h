@@ -71,8 +71,10 @@ class TasmotaSerial : public Stream {
 
     using Print::write;
 
-  private:
+    
     bool isValidGPIOpin(int pin);
+  private:
+    
     size_t txWrite(uint8_t byte);
     void _fast_write(uint8_t b);      // IRAM minimized version
 #ifdef ESP32

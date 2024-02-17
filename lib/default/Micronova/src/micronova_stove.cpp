@@ -2,8 +2,8 @@
 #include "micronova_stove.h"
 
 #if defined(ESP8266) || defined(USE_SWSERIAL)
-  #include <TasmotaSerial.h>
-  TasmotaSerial StoveSerial;
+  //#include <TasmotaSerial.h>
+  TasmotaSerial StoveSerial(STOVE_PIN_RX, STOVE_PIN_TX);
 #endif
 
 #if defined(ESP32) || defined(USE_HWSERIAL)
@@ -13,53 +13,49 @@
 
 #ifdef USE_RX_ENABLE
     MicronovaStove::MicronovaStove( int rx, int tx, int rx_enable ) {
-    pin_rx = rx;
-    pin_tx = tx;
-    pin_rx_enable = rx_enable;
+        pin_rx = rx;
+        pin_tx = tx;
+        pin_rx_enable = rx_enable;
     }
 #else
     MicronovaStove::MicronovaStove( int rx, int tx ) {
-    pin_rx = rx;
-    pin_tx = tx;
+        pin_rx = rx;
+        pin_tx = tx;
     }
 #endif
 
-
-void MicronovaStove::init(){
-  //StoveSerial.begin( 1200, SERIAL_MODE, pin_rx, pin_tx, false, 256 );
-  StoveSerial.begin( 1200, SERIAL_8N2); //, pin_rx, pin_tx, false, 256 );
+bool MicronovaStove::init(){
+  //StoveSerial.begin( 1200, SERIAL_8N2, STOVE_PIN_RX, STOVE_PIN_TX, false );
+  StoveSerial.begin( 1200, SERIAL_8N2);
+  
   if (dbg_out) printf("begin stove serial");
 #ifdef USE_RX_ENABLE
     pinMode( pin_rx_enable, OUTPUT );
     digitalWrite( pin_rx_enable, HIGH ); 
 #endif
-  
+  return StoveSerial.isValid();
 }
 
-
 /* read functions */
-
+#ifdef USE_RX_ENABLE
 void MicronovaStove::enable_rx(){
   if (dbg_out) printf("enable rx\n");
   digitalWrite( pin_rx_enable, LOW );
 }
 
-
 void MicronovaStove::disable_rx(){
   if (dbg_out) printf("disable rx\n");
   digitalWrite( pin_rx_enable, HIGH );
 }
-
+#endif
 
 void MicronovaStove::flushInput(){
   if (dbg_out) printf("flush serial input\n");
-    while (Serial.available()){
-      Serial.read();
-      if (dbg_out) printf("flush: read 1 extra byte\n");
-    }
+  while (StoveSerial.available()){
+    StoveSerial.read();
+    if (dbg_out) printf("flush: read 1 extra byte\n");
+  }
 }
-
-
 
 void MicronovaStove::read(uint8_t location, uint8_t addr){
       
@@ -71,10 +67,8 @@ void MicronovaStove::read(uint8_t location, uint8_t addr){
     printf(", addr=");
     printf("0x%02x ", addr );
     printf("\n");
-
   }
 
-      
   StoveSerial.write(location);
   StoveSerial.flush();
   StoveSerial.write(addr);
@@ -83,6 +77,8 @@ void MicronovaStove::read(uint8_t location, uint8_t addr){
   enable_rx();
 #endif
   // the stove needs some time to answer, 120ms seems about the right amount, 110 is too short
+  //delay(120);
+  // MODIFICATO DA 80 (funzionante) a 120 (da testare)
   delay(120);
 
   if (dbg_out) printf("read stove answer\n");
@@ -114,7 +110,6 @@ void MicronovaStove::read(uint8_t location, uint8_t addr){
   // TODO: check for error with checksum
 }
 
-
 uint8_t MicronovaStove::read_ram( uint8_t addr ){
   read( STOVE_OFFSET_RAM_READ, addr );
   return last_read_value;
@@ -125,7 +120,75 @@ uint8_t MicronovaStove::read_eeprom( uint8_t addr ){
   return last_read_value;
 }
 
+int8_t MicronovaStove::read_and_store_topics(){
+  int8_t ret = -1;
 
+  RWrunning = true;
+
+  // READ FUNCTION - begin
+  StoveSerial.write(STOVE_OFFSET_RAM_READ);
+  StoveSerial.flush();
+  StoveSerial.write(topics[topicID].address);
+  StoveSerial.flush();
+#ifdef USE_RX_ENABLE
+  enable_rx();
+#endif
+  delay(120);
+  uint8_t rx_count = 0;
+  stove_rx_data[0] = 0x00;
+  stove_rx_data[1] = 0x00;
+      
+  while ( StoveSerial.available() ) {
+    if (rx_count>1){
+      // TODO: find a better way to do this
+      rx_count = 0;
+    }
+    stove_rx_data[rx_count] = StoveSerial.read();
+    rx_count++;
+  }
+#ifdef USE_RX_ENABLE    
+  disable_rx();
+#endif
+
+  // READ FUNCTION - end
+
+  if (stove_rx_data[0] - stove_rx_data[1] == topics[topicID].address) {
+    topics[topicID].newValue = (float) stove_rx_data[1];
+    topics[topicID].newValue *= topics[topicID].factor;
+    if (topics[topicID].newValue != topics[topicID].currentValue) {
+      topics[topicID].currentValue = topics[topicID].newValue;
+      // DBG
+      //topics[topicID].currentValue = topics[topicID].address;
+      ret = topicID;
+    }
+  } else {
+    // ERRORE SERIALE
+  }
+    
+  // topics[topicID].newValue = (float) read_ram(topics[topicID].address);
+  // topics[topicID].newValue *= topics[topicID].factor;
+  // if (topics[topicID].newValue != topics[topicID].currentValue) {
+  //   topics[topicID].currentValue = topics[topicID].newValue;
+  //   topics[topicID].currentValue = topics[topicID].address;
+  //   ret = &topics[topicID];
+  // }
+
+  if (topicID++ >= N_TOPICS) topicID = 0;
+
+  RWrunning = false;
+  
+  return ret;
+}
+
+unsigned long MicronovaStove::measurePellet(){
+  digitalWrite( PELLET_TRIG, HIGH );
+  delayMicroseconds(15);
+  digitalWrite( PELLET_TRIG, LOW );
+  pelletMeasure = pulseIn(PELLET_ECHO, HIGH, 10000);
+  pelletMeasure = pelletMeasure / 58;
+  // TODO: send MQTT message
+  return pelletMeasure;
+}
 
 /* write functions */
 
@@ -143,19 +206,18 @@ void MicronovaStove::write( uint8_t location, uint8_t command, uint8_t data ){
   for ( int i = 0; i < 4; i++ ){
     if (dbg_out) printf("0x%02x ", data_to_write[i] );
     StoveSerial.write( data_to_write[i] );
-    delay(1);
+    delay(10);
   }
     
   if (dbg_out) printf("\n");
-
 }
-
 
 void MicronovaStove::read_answer(){
   #ifdef USE_RX_ENABLE
   enable_rx();
   #endif
-  delay(120);
+  //delay(120);
+  delay(80);
   uint8_t rx_count = 0;
   stove_rx_data[0] = 0x00;
   stove_rx_data[1] = 0x00;
@@ -176,7 +238,6 @@ void MicronovaStove::read_answer(){
   
 }
 
-
 void MicronovaStove::write_ram( uint8_t command, uint8_t data ){
   write( STOVE_OFFSET_RAM_WRITE, command, data );
 }
@@ -192,7 +253,6 @@ void MicronovaStove::simulate_infrared(uint8_t data, uint8_t repetitions){
   }
 }
 
-
 byte MicronovaStove::calculate_checksum( uint8_t dest, uint8_t addr, uint8_t val ){
   uint8_t checksum = 0;
   checksum = dest+addr+val;
@@ -202,44 +262,49 @@ byte MicronovaStove::calculate_checksum( uint8_t dest, uint8_t addr, uint8_t val
   return (uint8_t)checksum;
 }
 
-
-
-
 /* Abstraction helper functions */
 
 void MicronovaStove::on(){
   write_ram(STOVE_ADDR_STATE, STOVE_STATE_TURN_ON);
 }
 
-
-void MicronovaStove::off(){
-  simulate_infrared(STOVE_IR_POWER, 8);
+void MicronovaStove::powerIR(){
+  simulate_infrared(STOVE_IR_POWER, 10);
 }
 
+void MicronovaStove::off(){
+  write_ram(STOVE_ADDR_STATE, STOVE_STATE_TURN_OFF);
+}
+
+uint8_t MicronovaStove::get_status(){
+  read_ram(STOVE_ADDR_STATE);
+  return last_read_value;
+}
 
 float MicronovaStove::get_ambient_temp(){
   read_ram(STOVE_ADDR_AMBIENT_TEMP);
   return (float) last_read_value / 2;
 }
 
-
 uint8_t MicronovaStove::get_fumes_temp(){
   read_ram(STOVE_ADDR_FUMES_TEMP);
   return last_read_value;
 }
 
+uint8_t MicronovaStove::get_water_temp(){
+  read_ram(STOVE_ADDR_WATER_TEMP);
+  return last_read_value;
+}
 
 uint8_t MicronovaStove::get_power(){
   read_ram(STOVE_ADDR_POWER_EEPROM);
   return last_read_value;
 }
 
-
 uint16_t MicronovaStove::get_fumes_fan_speed(){
   read_ram(STOVE_ADDR_FUMES_SPEED);
   return (uint16_t) last_read_value*10;
 }
-
 
 void MicronovaStove::set_power(uint8_t power_level){
   if (power_level > 4){
@@ -249,7 +314,6 @@ void MicronovaStove::set_power(uint8_t power_level){
   write_eeprom(STOVE_ADDR_POWER_EEPROM, power_level);
   write_ram(STOVE_ADDR_POWER_RAM, power_level);
 }
-
 
 void MicronovaStove::set_thermostat(uint8_t temperature){
   if (temperature > 32){

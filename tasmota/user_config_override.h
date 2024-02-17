@@ -38,29 +38,42 @@
 // Examples :
 //
 
-// -- Master parameter control --------------------
+#define CASA_MIA
+//#define CASA_ROSSANA
+//#define CASA_MAMMA
+
 #undef  CFG_HOLDER
-#define CFG_HOLDER        4617                   // [Reset 1] Change this value to load SECTION1 configuration parameters to flash
-
-// -- Setup your own Wifi settings  ---------------
 #undef  STA_SSID1
-#define STA_SSID1         "PaciottiWiFi"             // [Ssid1] Wifi SSID
-
 #undef  STA_PASS1
-#define STA_PASS1         "Paciott1Paciott1Paciott1"     // [Password1] Wifi password
 
-// -- Setup your own MQTT settings  ---------------
-#undef  MQTT_HOST
-#define MQTT_HOST         "192.168.1.90" // [MqttHost]
+// -- Master parameter control --------------------
+#ifdef CASA_MIA
+  #define CFG_HOLDER        4619                          // [Reset 1] Change this value to load SECTION1 configuration parameters to flash
+  #define STA_SSID1         "PaciottiWiFi"                // [Ssid1] Wifi SSID
+  #define STA_PASS1         "Paciott1Paciott1Paciott1"    // [Password1] Wifi password
+  
+  #undef  MQTT_HOST
+  #define MQTT_HOST         "192.168.1.90"                // [MqttHost]
+  #undef  MQTT_PORT
+  #define MQTT_PORT         1883                          // [MqttPort] MQTT port (10123 on CloudMQTT)
+  #undef  MQTT_USER
+  #define MQTT_USER         "paciotti"                    // [MqttUser] Optional user
+  #undef  MQTT_PASS
+  #define MQTT_PASS         "tata1608"                    // [MqttPassword] Optional password
+#endif
+#ifdef CASA_ROSSANA
+  #define CFG_HOLDER        4618                          // [Reset 1] Change this value to load SECTION1 configuration parameters to flash
+  #define STA_SSID1         "Vodafone-C01860233"          // [Ssid1] Wifi SSID
+  #define STA_PASS1         "zaP2z7HtXd4NKbyF"            // [Password1] Wifi password
+#endif
+#ifdef CASA_MAMMA
+  #define CFG_HOLDER        4621                          // [Reset 1] Change this value to load SECTION1 configuration parameters to flash
+  #define STA_SSID1         "TIM-18371019"                // [Ssid1] Wifi SSID
+  #define STA_PASS1         "Paciott1Paciott1Paciott1"    // [Password1] Wifi password
+#endif
 
-#undef  MQTT_PORT
-#define MQTT_PORT         1883                   // [MqttPort] MQTT port (10123 on CloudMQTT)
-
-#undef  MQTT_USER
-#define MQTT_USER         "paciotti"         // [MqttUser] Optional user
-
-#undef  MQTT_PASS
-#define MQTT_PASS         "tata1608"         // [MqttPassword] Optional password
+//#define MICRONOVA_TX 9
+//#define MICRONOVA_RX 10
 
 // You might even pass some parameters from the command line ----------------------------
 // Ie:  export PLATFORMIO_BUILD_FLAGS='-DUSE_CONFIG_OVERRIDE -DMY_IP="192.168.1.99" -DMY_GW="192.168.1.1" -DMY_DNS="192.168.1.1"'
@@ -90,8 +103,23 @@
 
 // Own Configuration goes here
 #ifdef PROJECT
-#undef PROJECT
-#define PROJECT           "Micronova"       // PROJECT is used as the default topic delimiter
+  #undef PROJECT
+  #define PROJECT           "Micronova"       // PROJECT is used as the default topic delimiter
 #endif 
+
+#ifdef MODULE
+#undef MODULE
+#endif
+#define MODULE                 USER_MODULE   // [Module] Select default model (the list is kModuleNiceList() in file tasmota_template.h) USER_MODULE is the TEMPLATE
+
+#ifdef FALLBACK_MODULE
+#undef FALLBACK_MODULE
+#endif
+#define FALLBACK_MODULE        USER_MODULE   // to Select the default model as FALLBACK when the user does a RESET 1 
+
+#ifdef USER_TEMPLATE
+#undef USER_TEMPLATE
+#endif
+#define USER_TEMPLATE         "{\"NAME\":\"Micronova\",\"GPIO\":[1,1,1,1,3232,3200,1,1,1,1,1,1,1,1],\"FLAG\":0,\"BASE\":18}"  // [Template] Set JSON template
 
 #endif  // _USER_CONFIG_OVERRIDE_H_

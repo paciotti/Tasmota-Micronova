@@ -127,7 +127,8 @@ TasmotaSerial::~TasmotaSerial(void) {
 
 bool TasmotaSerial::isValidGPIOpin(int pin) {
 #ifdef ESP8266
-  return (pin >= -1 && pin <= 5) || (pin >= 12 && pin <= 15);
+  return true;
+  //return (pin >= -1 && pin <= 5) || (pin >= 12 && pin <= 15);
 #endif
 #ifdef ESP32
   return GPIO_IS_VALID_OUTPUT_GPIO(pin);
